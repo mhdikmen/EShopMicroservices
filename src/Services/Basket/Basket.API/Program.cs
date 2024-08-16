@@ -1,3 +1,4 @@
+using Discount.Grpc;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,6 +8,10 @@ string redisConnectionString = builder.Configuration.GetConnectionString("Redis"
 string dbConnectionString = builder.Configuration.GetConnectionString("Database")!;
 
 // Add services to the container.
+
+//Application Services
+DependencyContextAssemblyCatalog dependencyContextAssemblyCatalog = new([assembly]);
+builder.Services.AddCarter(dependencyContextAssemblyCatalog);
 builder.Services.AddMediatR(config =>
 {
     config.RegisterServicesFromAssembly(assembly);
@@ -14,21 +19,18 @@ builder.Services.AddMediatR(config =>
     config.AddOpenBehavior(typeof(LoggingBehavior<,>));
 });
 
-DependencyContextAssemblyCatalog dependencyContextAssemblyCatalog = new([assembly]);
-builder.Services.AddCarter(dependencyContextAssemblyCatalog);
 
+//Data Services
 builder.Services.AddMarten(options =>
 {
     options.Connection(dbConnectionString);
     options.Schema.For<ShoppingCart>().Identity(x => x.UserName);
 }).UseLightweightSessions();
 
-// Add Swagger services
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-builder.Services.AddValidatorsFromAssembly(assembly);
-builder.Services.AddExceptionHandler<CustomExceptionHandler>();
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = redisConnectionString;
+});
 
 builder.Services.AddScoped<IBasketRepository, BasketRepository>();
 //builder.Services.AddScoped<IBasketRepository, CachedBasketRepository>();
@@ -41,11 +43,29 @@ builder.Services.AddScoped<IBasketRepository>(provider =>
 */
 builder.Services.Decorate<IBasketRepository, CachedBasketRepository>();
 
-builder.Services.AddStackExchangeRedisCache(options =>
+// Swagger (Open API) services
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+//Grpc Services
+builder.Services.AddGrpcClient<DiscountProtoService.DiscountProtoServiceClient>(options =>
 {
-    options.Configuration = redisConnectionString;
+    options.Address = new Uri(builder.Configuration["GrpcSettings:DiscountUrl"]!);
+})
+.ConfigurePrimaryHttpMessageHandler(() =>
+{
+    var handler = new HttpClientHandler
+    {
+        // Don't use in production
+        ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+    };
+    return handler;
 });
 
+
+//Cross-cutting Services
+builder.Services.AddValidatorsFromAssembly(assembly);
+builder.Services.AddExceptionHandler<CustomExceptionHandler>();
 builder.Services.AddHealthChecks()
     .AddNpgSql(dbConnectionString)
     .AddRedis(redisConnectionString);
