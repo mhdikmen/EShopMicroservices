@@ -2,12 +2,11 @@ using Discount.Grpc;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
+// Add services to the container.
 
 Assembly assembly = typeof(Program).Assembly;
 string redisConnectionString = builder.Configuration.GetConnectionString("Redis")!;
 string dbConnectionString = builder.Configuration.GetConnectionString("Database")!;
-
-// Add services to the container.
 
 //Application Services
 DependencyContextAssemblyCatalog dependencyContextAssemblyCatalog = new([assembly]);

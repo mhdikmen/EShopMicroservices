@@ -1,0 +1,38 @@
+﻿using Carter;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+
+namespace Ordering.API;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        // Swagger (Open API) services
+        services.AddEndpointsApiExplorer();
+        services.AddSwaggerGen();
+
+        return services;
+    }
+
+    public static WebApplication UseApiServices(this WebApplication app)
+    {
+        //app.MapCarter();
+
+        //app.UseExceptionHandler(options => { });
+        //app.UseHealthChecks("/health",
+        //    new HealthCheckOptions
+        //    {
+        //        ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+        //    });
+
+        // Swagger (Open API) services
+        app.UseSwagger();
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Basket.API");
+            c.RoutePrefix = string.Empty; // Set Swagger UI at the root
+        });
+
+        return app;
+    }
+}
