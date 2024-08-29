@@ -1,4 +1,7 @@
-﻿using System.Reflection;
+﻿using BuildingBlocks.Exceptions.Handler;
+using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using System.Reflection;
 
 namespace Ordering.API;
 
@@ -11,9 +14,10 @@ public static class DependencyInjection
         DependencyContextAssemblyCatalog dependencyContextAssemblyCatalog = new([assembly]);
         services.AddCarter(dependencyContextAssemblyCatalog);
 
-        //services.AddHealthChecks()
-        //    .AddNpgSql(connectionString);
+        services.AddHealthChecks()
+            .AddSqlServer(configuration.GetConnectionString("Database")!);
 
+        services.AddExceptionHandler<CustomExceptionHandler>();
         // Swagger (Open API) services
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
@@ -25,11 +29,11 @@ public static class DependencyInjection
         app.MapCarter();
         app.UseExceptionHandler(options => { });
 
-        //app.UseHealthChecks("/health",
-        //    new HealthCheckOptions
-        //    {
-        //        ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
-        //    });
+        app.UseHealthChecks("/health",
+            new HealthCheckOptions
+            {
+                ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+            });
 
         // Swagger (Open API) services
         app.UseSwagger();
